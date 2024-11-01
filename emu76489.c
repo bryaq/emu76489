@@ -9,8 +9,8 @@
   2015 12-13 : Version 1.21 -- Changed own integer types to C99 stdint.h types.
   2016 09-06 : Version 1.22 -- Support per-channel output.
 
-  References: 
-    SN76489 data sheet   
+  References:
+    SN76489 data sheet
     sn76489.c   -- from MAME
     sn76489.txt -- from http://www.smspower.org/
 
@@ -90,7 +90,7 @@ SNG_reset (SNG * sng)
 
   sng->adr = 0;
 
-  sng->noise_seed = 0x8000;
+  sng->noise_seed = 0x10000;
   sng->noise_count = 0;
   sng->noise_freq = 0;
   sng->noise_volume = 0x0f;
@@ -143,7 +143,7 @@ SNG_writeIO (SNG * sng, uint32_t val)
       if (sng->noise_freq == 0)
         sng->noise_freq = 1;
 
-      sng->noise_seed = 0x8000;
+      sng->noise_seed = 0x10000;
       break;
 
     case 7:
@@ -163,7 +163,7 @@ static inline int parity(int val) {
 	val^=val>>2;
 	val^=val>>1;
 	return val&1;
-};
+}
 
 static inline void
 update_output (SNG * sng)
@@ -181,17 +181,17 @@ update_output (SNG * sng)
   if (sng->noise_count & 0x100)
   {
     if (sng->noise_mode) /* White */
-      sng->noise_seed = (sng->noise_seed>>1) | (parity(sng->noise_seed&0x0009)<<15);
+      sng->noise_seed = (sng->noise_seed>>1) | (((sng->noise_seed&4)<<14)^((sng->noise_seed&8)<<13));
     else                 /* Periodic */
-      sng->noise_seed = (sng->noise_seed>>1) | ((sng->noise_seed&1)<<15);
-    
+      sng->noise_seed = (sng->noise_seed>>1) | ((sng->noise_seed&4)<<14);
+
     if(sng->noise_fref)
-      sng->noise_count -= sng->freq[2];
+      sng->noise_count -= sng->freq[2] * 2;
     else
       sng->noise_count -= sng->noise_freq;
   }
 
-  if (sng->noise_seed & 1) 
+  if (sng->noise_seed & 1)
   {
     sng->ch_out[3] += voltbl[sng->noise_volume] << 4;
   }
@@ -225,7 +225,7 @@ update_output (SNG * sng)
 }
 
 static inline int16_t
-mix_output (SNG * sng) 
+mix_output (SNG * sng)
 {
   sng->out = sng->ch_out[0] + sng->ch_out[1] + sng->ch_out[2] + sng->ch_out[3];
   return (int16_t) sng->out;
@@ -251,7 +251,7 @@ SNG_calc (SNG * sng)
   return mix_output(sng);
 }
 
-static inline void 
+static inline void
 mix_output_stereo (SNG * sng, int32_t out[2])
 {
   int i;
